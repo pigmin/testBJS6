@@ -1,2 +1,3 @@
-#test BJS2
+# testBJS6
 
+For my students, adding camera and fun things

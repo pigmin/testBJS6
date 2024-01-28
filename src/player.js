@@ -16,6 +16,7 @@ class Player {
     bWalking = false;
     idleAnim;
     runAnim;
+    walkAnim;
 
     x = 0.0;
     y = 0.0;
@@ -47,7 +48,8 @@ class Player {
         this.animationsGroup[0].stop();
         this.idleAnim = this.scene.getAnimationGroupByName('Idle');
         this.runAnim = this.scene.getAnimationGroupByName('Running');
-        this.idleAnim.start(true, 1.0, this.runAnim.from, this.runAnim.to, false);
+        this.walkAnim = this.scene.getAnimationGroupByName('Walking');
+        this.idleAnim.start(true, 1.0, this.idleAnim.from, this.idleAnim.to, false);
     }
 
     //Pour le moment on passe les events clavier ici, on utilisera un InputManager plus tard
@@ -119,7 +121,7 @@ class Player {
         else {
             if (this.bWalking) {
                 this.runAnim.stop();
-                this.idleAnim.start(true, 1.0, this.runAnim.from, this.runAnim.to, false);
+                this.idleAnim.start(true, 1.0, this.idleAnim.from, this.idleAnim.to, false);
                 this.bWalking = false;
             }
         }

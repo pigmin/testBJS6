@@ -1,6 +1,8 @@
 import { Mesh, MeshBuilder, SceneLoader, TransformNode, Vector3 } from "@babylonjs/core";
 
-import girlModelUrl from "../assets/models/HVGirl.glb";
+import girlModelUrl from "../assets/models/girl1.glb";
+
+const RUNNING_SPEED = 8;
 
 class Player {
 
@@ -37,30 +39,33 @@ class Player {
         //On cré le mesh et on l'attache à notre parent
         const result = await SceneLoader.ImportMeshAsync("", "", girlModelUrl, this.scene);
         this.gameObject = result.meshes[0];
-        this.gameObject.scaling = new Vector3(-.5, .5, .5);
+        this.gameObject.scaling = new Vector3(-1, 1, 1);
+        this.gameObject.checkCollisions = true;
 
         this.gameObject.parent = this.transform;
         this.animationsGroup = result.animationGroups;
-        this.idleAnim = this.animationsGroup[0];
-        this.runAnim = this.animationsGroup[2];
+        this.animationsGroup[0].stop();
+        this.idleAnim = this.scene.getAnimationGroupByName('Idle');
+        this.runAnim = this.scene.getAnimationGroupByName('Running');
+        this.idleAnim.start(true, 1.0, this.runAnim.from, this.runAnim.to, false);
     }
 
     //Pour le moment on passe les events clavier ici, on utilisera un InputManager plus tard
     update(inputMap, actions, delta) {
         //Inputs
         if (inputMap["KeyA"])
-            this.speedX = -25;
+            this.speedX = -RUNNING_SPEED;
         else if (inputMap["KeyD"])
-            this.speedX = 25;
+            this.speedX = RUNNING_SPEED;
         else {
             //Frottements
             this.speedX += (-10.0 * this.speedX * delta);
         }
 
         if (inputMap["KeyW"])
-            this.speedZ = 25;
+            this.speedZ = RUNNING_SPEED;
         else if (inputMap["KeyS"])
-            this.speedZ = -25;
+            this.speedZ = -RUNNING_SPEED;
         else {
             //Frottements
             this.speedZ += (-10.0 * this.speedZ * delta);
@@ -83,27 +88,29 @@ class Player {
         this.z += this.speedZ * delta;
 
         //Check collisions
-        if (this.x > 30)
-            this.x = 30;
-        else if (this.x < -30)
-            this.x = -30;
+        if (this.x > 320)
+            this.x = 320;
+        else if (this.x < -320)
+            this.x = -320;
 
-        if (this.z > 30)
-            this.z = 30;
-        else if (this.z < -30)
-            this.z = -30;
+        if (this.z > 320)
+            this.z = 320;
+        else if (this.z < -320)
+            this.z = -320;
 
-        if (this.y < 1)
-            this.y = 1;
+        if (this.y < 0)
+            this.y = 0;
 
         //Position update
         this.transform.position.set(this.x, this.y, this.z);
         //Orientation
         let directionXZ = new Vector3(this.speedX, 0, this.speedZ);
-        this.gameObject.lookAt(directionXZ);
+
 
         //Animations
         if (directionXZ.length() > 2.5) {
+            this.gameObject.lookAt(directionXZ);
+            
             if (!this.bWalking) {
                 this.runAnim.start(true, 1.0, this.runAnim.from, this.runAnim.to, false);
                 this.bWalking = true;

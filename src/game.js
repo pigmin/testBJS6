@@ -12,6 +12,7 @@ class Game {
     #engine;
     #gameScene;
     #gameCamera;
+    #shadowGenerator;
     #bInspector = false;
 
     #sphere;
@@ -39,33 +40,39 @@ class Game {
 
     createScene() {
         const scene = new Scene(this.#engine);
+        scene.collisionsEnabled = true;
         
-        this.#gameCamera = new FollowCamera("camera1", new Vector3(0, 18, -35), scene);
-        this.#gameCamera.heightOffset = 18;
-        this.#gameCamera.radius = -35;
+        this.#gameCamera = new FollowCamera("camera1", new Vector3(0, 0, 0), scene);
+        this.#gameCamera.heightOffset = 4;
+        this.#gameCamera.radius = -8;
         this.#gameCamera.maxCameraSpeed = 1;
         this.#gameCamera.cameraAcceleration = 0.025;
         this.#gameCamera.rotationOffset = 0;
         //this.#gameCamera.setTarget(Vector3.Zero());
-        this.#gameCamera.attachControl(this.#canvas, true);
+        //this.#gameCamera.attachControl(this.#canvas, true);
 
         const light = new HemisphericLight("light", new Vector3(0, 1, 0), scene);
         light.intensity = 0.7;
 
         const sLight = new SpotLight("spot1", new Vector3(0, 20, 20), new Vector3(0, -1, -1), 1.2, 24, scene);
-        const shadowGenerator = new ShadowGenerator(1024, sLight);
-        shadowGenerator.useBlurExponentialShadowMap = true;
+        this.#shadowGenerator = new ShadowGenerator(1024, sLight);
+        this.#shadowGenerator.useBlurExponentialShadowMap = true;
 
         const sphere = MeshBuilder.CreateSphere("sphere", { diameter: 2, segments: 32 }, scene);
         sphere.position.y = 5;
         this.#sphere = sphere;
 
-        const ground = MeshBuilder.CreateGround("ground", { width: 64, height: 64 }, scene);
+        const ground = MeshBuilder.CreateGround("ground", { width: 640, height: 640, subdivisions:128 }, scene);
+        ground.checkCollisions = true;
 
         const matGround = new StandardMaterial("boue", scene);
         //matGround.diffuseColor = new Color3(1, 0.4, 0);
         matGround.diffuseTexture = new Texture(floorUrl);
+        matGround.diffuseTexture.uScale = 64;
+        matGround.diffuseTexture.vScale = 64;
         matGround.bumpTexture = new Texture(floorBumpUrl);
+        matGround.bumpTexture.uScale = 64;
+        matGround.bumpTexture.vScale = 64;
 
         ground.material = matGround;
         ground.receiveShadows = true;
@@ -75,7 +82,7 @@ class Game {
         matSphere.specularColor = new Color3(0.4, 0.4, 1);
         sphere.material = matSphere;
 
-        shadowGenerator.addShadowCaster(sphere);
+        this.#shadowGenerator.addShadowCaster(sphere);
 
         sphere.actionManager = new ActionManager(scene);
         sphere.actionManager.registerAction(
@@ -122,6 +129,9 @@ class Game {
             )
         );
 
+        let boxDebug = MeshBuilder.CreateBox("boxDebug", {size : 1.7});
+        boxDebug.position = new Vector3(10, 1.7/2, 5);
+
         return scene;
     }
 
@@ -130,6 +140,7 @@ class Game {
         this.#player = new Player(3, 10, 3, this.#gameScene);
         await this.#player.init();
         this.#gameCamera.lockedTarget = this.#player.transform;
+        this.#shadowGenerator.addShadowCaster(this.#player.gameObject, true);
 
         this.initInput();
     }

@@ -13,7 +13,12 @@ class Player {
     gameObject;
     //Animations
     animationsGroup;
+    
     bWalking = false;
+    bOnGround = false;
+    bFalling = false;
+    bJumping = false;
+
     idleAnim;
     runAnim;
     walkAnim;

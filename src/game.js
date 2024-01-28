@@ -1,6 +1,6 @@
-import { ActionManager, Color3, Color4, FollowCamera, FreeCamera, HemisphericLight, InterpolateValueAction, KeyboardEventTypes, Mesh, MeshBuilder, ParticleSystem, Scene, SetValueAction, ShadowGenerator, SpotLight, StandardMaterial, Texture, Vector3 } from "@babylonjs/core";
+import { ActionManager, Color3, Color4, FollowCamera, FreeCamera, HavokPlugin, HemisphericLight, InterpolateValueAction, KeyboardEventTypes, Mesh, MeshBuilder, ParticleSystem, PhysicsAggregate, PhysicsMotionType, PhysicsShapeType, Scene, SetValueAction, ShadowGenerator, SpotLight, StandardMaterial, Texture, Vector3 } from "@babylonjs/core";
 import { Inspector } from '@babylonjs/inspector';
-
+import HavokPhysics from "@babylonjs/havok";
 
 import floorUrl from "../assets/textures/floor.png";
 import floorBumpUrl from "../assets/textures/floor_bump.png";
@@ -10,12 +10,14 @@ class Game {
 
     #canvas;
     #engine;
+    #havokInstance;
     #gameScene;
     #gameCamera;
     #shadowGenerator;
     #bInspector = false;
 
     #sphere;
+    #sphereAggregate;
     #zoneA;
     #zoneB;
 
@@ -41,6 +43,10 @@ class Game {
     createScene() {
         const scene = new Scene(this.#engine);
         scene.collisionsEnabled = true;
+
+        const hk = new HavokPlugin(true, this.#havokInstance);
+        // enable physics in the scene with a gravity
+        scene.enablePhysics(new Vector3(0, -9.8, 0), hk);        
         
         this.#gameCamera = new FollowCamera("camera1", new Vector3(0, 0, 0), scene);
         this.#gameCamera.heightOffset = 4;
@@ -59,7 +65,7 @@ class Game {
         this.#shadowGenerator.useBlurExponentialShadowMap = true;
 
         const sphere = MeshBuilder.CreateSphere("sphere", { diameter: 2, segments: 32 }, scene);
-        sphere.position.y = 5;
+        sphere.position.y = 1;
         this.#sphere = sphere;
 
         const ground = MeshBuilder.CreateGround("ground", { width: 640, height: 640, subdivisions:128 }, scene);
@@ -76,6 +82,9 @@ class Game {
 
         ground.material = matGround;
         ground.receiveShadows = true;
+        // Create a static box shape.
+        const groundAggregate = new PhysicsAggregate(ground, PhysicsShapeType.BOX, { mass: 0 }, scene);
+        groundAggregate.body.setMotionType(PhysicsMotionType.STATIC);
 
         const matSphere = new StandardMaterial("silver", scene);
         matSphere.diffuseColor = new Color3(0.8, 0.8, 1);
@@ -128,14 +137,27 @@ class Game {
                 sphere.material.diffuseColor
             )
         );
+        // Create a sphere shape and the associated body. Size will be determined automatically.
+        this.#sphereAggregate = new PhysicsAggregate(sphere, PhysicsShapeType.SPHERE, { mass: 1, restitution: 0.5 }, scene);
+        this.#sphereAggregate.body.setMotionType(PhysicsMotionType.ANIMATED);
+
 
         let boxDebug = MeshBuilder.CreateBox("boxDebug", {size : 1.7});
-        boxDebug.position = new Vector3(10, 1.7/2, 5);
+        boxDebug.position = new Vector3(10, 14+1.7/2, 5);
+        // Create a sphere shape and the associated body. Size will be determined automatically.
+        const boxAggregate = new PhysicsAggregate(boxDebug, PhysicsShapeType.BOX, { mass: 1, restitution: 0.5 }, scene);
+
+
 
         return scene;
     }
 
+    async getInitializedHavok() {
+        return await HavokPhysics();
+    }
+
     async initGame() {
+        this.#havokInstance = await this.getInitializedHavok();
         this.#gameScene = this.createScene();
         this.#player = new Player(3, 10, 3, this.#gameScene);
         await this.#player.init();
@@ -197,7 +219,7 @@ class Game {
 
         //Animation
         this.#phase += this.#vitesseY * delta;
-        this.#sphere.position.y = 2 + Math.sin(this.#phase);
+        this.#sphereAggregate.body.setLinearVelocity(new Vector3(0, Math.sin(this.#phase)), 0);
         this.#sphere.scaling.y = 1 + 0.125 * Math.sin(this.#phase);
 
         //Collisions

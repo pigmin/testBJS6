@@ -1,8 +1,10 @@
-import { Mesh, MeshBuilder, SceneLoader, TransformNode, Vector3 } from "@babylonjs/core";
+import { Matrix, Mesh, MeshBuilder, Physics6DoFConstraint, PhysicsAggregate, PhysicsConstraintAxis, PhysicsMotionType, PhysicsShapeType, Quaternion, SceneLoader, TransformNode, Vector3 } from "@babylonjs/core";
 
 import girlModelUrl from "../assets/models/girl1.glb";
 
 const RUNNING_SPEED = 8;
+const PLAYER_HEIGHT = 1.7;
+const PLAYER_RADIUS = 0.4;
 
 class Player {
 
@@ -11,6 +13,9 @@ class Player {
     transform;
     //Mesh
     gameObject;
+    //Physic
+    capsuleAggregate;
+        
     //Animations
     animationsGroup;
     
@@ -37,16 +42,30 @@ class Player {
         this.x = x || 0.0;
         this.y = y || 0.0;
         this.z = z || 0.0;
-        this.transform = new TransformNode("");
+        this.transform = new MeshBuilder.CreateCapsule("player", {height: PLAYER_HEIGHT, radius: 0.4}, this.scene);
+        this.transform.visibility = 0.0;
         this.transform.position = new Vector3(this.x, this.y, this.z);
+
     }
 
     async init() {
         //On cré le mesh et on l'attache à notre parent
         const result = await SceneLoader.ImportMeshAsync("", "", girlModelUrl, this.scene);
         this.gameObject = result.meshes[0];
-        this.gameObject.scaling = new Vector3(-1, 1, 1);
+        this.gameObject.scaling = new Vector3(1, 1, 1);
+        this.gameObject.position = new Vector3(0, -PLAYER_HEIGHT/2, 0);
+        this.gameObject.rotate(Vector3.UpReadOnly, Math.PI);
+        this.gameObject.bakeCurrentTransformIntoVertices();
         this.gameObject.checkCollisions = true;
+        
+        this.capsuleAggregate = new PhysicsAggregate(this.transform, PhysicsShapeType.CAPSULE, { mass: 1, restitution:0}, this.scene);
+        this.capsuleAggregate.body.setMotionType(PhysicsMotionType.DYNAMIC);
+
+        //On bloque les rotations avec cette méthode, à vérifier.
+        this.capsuleAggregate.body.setMassProperties({
+           inertia: new Vector3(0, 0, 0),
+        });
+
 
         this.gameObject.parent = this.transform;
         this.animationsGroup = result.animationGroups;
@@ -85,38 +104,28 @@ class Player {
                 this.speedY = 50;
         }
 
-        //Gravity
-        //La vitesse est modifiee par l'acceleration donc on prends le delta en compte
-        this.speedY = this.speedY - (100 * delta);
-
-        //Move
-        this.x += this.speedX * delta;
-        this.y += this.speedY * delta;
-        this.z += this.speedZ * delta;
-
-        //Check collisions
-        if (this.x > 320)
-            this.x = 320;
-        else if (this.x < -320)
-            this.x = -320;
-
-        if (this.z > 320)
-            this.z = 320;
-        else if (this.z < -320)
-            this.z = -320;
-
-        if (this.y < 0)
-            this.y = 0;
+        //Gravity 
+        let currentVelocity = this.capsuleAggregate.body.getLinearVelocity();
+        currentVelocity = new Vector3(this.speedX, currentVelocity.y, this.speedZ);
 
         //Position update
-        this.transform.position.set(this.x, this.y, this.z);
+        this.capsuleAggregate.body.setLinearVelocity(currentVelocity);
+
         //Orientation
         let directionXZ = new Vector3(this.speedX, 0, this.speedZ);
 
 
         //Animations
         if (directionXZ.length() > 2.5) {
-            this.gameObject.lookAt(directionXZ);
+            /* Autre tentative de  rotation autour de l'axe Z uniquement
+                const lookAt = Matrix.LookAtLH(
+                Vector3.Zero,
+                directionXZ,
+                Vector3.UpReadOnly
+            ).invert();
+            this.gameObject.rotationQuaternion = Quaternion.FromRotationMatrix( lookAt );*/
+
+            this.gameObject.lookAt(directionXZ.normalize());
             
             if (!this.bWalking) {
                 this.runAnim.start(true, 1.0, this.runAnim.from, this.runAnim.to, false);

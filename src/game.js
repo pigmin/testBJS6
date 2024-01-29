@@ -16,8 +16,8 @@ class Game {
     #shadowGenerator;
     #bInspector = false;
 
-    #sphere;
-    #sphereAggregate;
+    #elevator;
+    #elevatorAggregate;
     #zoneA;
     #zoneB;
 
@@ -64,9 +64,10 @@ class Game {
         this.#shadowGenerator = new ShadowGenerator(1024, sLight);
         this.#shadowGenerator.useBlurExponentialShadowMap = true;
 
-        const sphere = MeshBuilder.CreateSphere("sphere", { diameter: 2, segments: 32 }, scene);
-        sphere.position.y = 1;
-        this.#sphere = sphere;
+        const elevator = MeshBuilder.CreateDisc("sphere", { diameter: 2, segments: 32 }, scene);
+        elevator.rotate(Vector3.Right(), Math.PI/2)
+        elevator.position.y = 0.1;
+        this.#elevator = elevator;
 
         const ground = MeshBuilder.CreateGround("ground", { width: 640, height: 640, subdivisions:128 }, scene);
         ground.checkCollisions = true;
@@ -89,20 +90,9 @@ class Game {
         const matSphere = new StandardMaterial("silver", scene);
         matSphere.diffuseColor = new Color3(0.8, 0.8, 1);
         matSphere.specularColor = new Color3(0.4, 0.4, 1);
-        sphere.material = matSphere;
+        elevator.material = matSphere;
 
-        this.#shadowGenerator.addShadowCaster(sphere);
-
-        sphere.actionManager = new ActionManager(scene);
-        sphere.actionManager.registerAction(
-            new InterpolateValueAction(
-                ActionManager.OnPickTrigger,
-                light,
-                'diffuse',
-                Color3.Black(),
-                1000
-            )
-        );
+        this.#shadowGenerator.addShadowCaster(elevator);
 
 
         this.#zoneA = MeshBuilder.CreateBox("zoneA", { width: 8, height: 0.2, depth: 8 }, scene);
@@ -120,30 +110,13 @@ class Game {
         this.#zoneB.material = zoneMatB;
         this.#zoneB.position = new Vector3(-12, 0.1, -12);
 
-        sphere.actionManager.registerAction(
-            new SetValueAction(
-                { trigger: ActionManager.OnIntersectionEnterTrigger, parameter: this.#zoneB },
-                sphere.material,
-                'diffuseColor',
-                Color3.Green()
-            )
-        );
-
-        sphere.actionManager.registerAction(
-            new SetValueAction(
-                { trigger: ActionManager.OnIntersectionExitTrigger, parameter: this.#zoneB },
-                sphere.material,
-                'diffuseColor',
-                sphere.material.diffuseColor
-            )
-        );
         // Create a sphere shape and the associated body. Size will be determined automatically.
-        this.#sphereAggregate = new PhysicsAggregate(sphere, PhysicsShapeType.SPHERE, { mass: 1, restitution: 0.5 }, scene);
-        this.#sphereAggregate.body.setMotionType(PhysicsMotionType.ANIMATED);
+        this.#elevatorAggregate = new PhysicsAggregate(elevator, PhysicsShapeType.CONVEX_HULL, { mass: 1, restitution: 0.0 }, scene);
+        this.#elevatorAggregate.body.setMotionType(PhysicsMotionType.ANIMATED);
 
 
-        let boxDebug = MeshBuilder.CreateBox("boxDebug", {size : 1.7});
-        boxDebug.position = new Vector3(10, 14+1.7/2, 5);
+        let boxDebug = MeshBuilder.CreateBox("boxDebug", {size : 2});
+        boxDebug.position = new Vector3(10, 15, 5);
         // Create a sphere shape and the associated body. Size will be determined automatically.
         const boxAggregate = new PhysicsAggregate(boxDebug, PhysicsShapeType.BOX, { mass: 1, restitution: 0.5 }, scene);
 
@@ -219,14 +192,13 @@ class Game {
 
         //Animation
         this.#phase += this.#vitesseY * delta;
-        this.#sphereAggregate.body.setLinearVelocity(new Vector3(0, Math.sin(this.#phase)), 0);
-        this.#sphere.scaling.y = 1 + 0.125 * Math.sin(this.#phase);
+        this.#elevatorAggregate.body.setLinearVelocity(new Vector3(0, Math.sin(this.#phase)), 0);
 
         //Collisions
-        if (this.#sphere.intersectsMesh(this.#zoneA, false))
-            this.#sphere.material.emissiveColor = Color3.Red();
+        if (this.#elevator.intersectsMesh(this.#zoneA, false))
+            this.#elevator.material.emissiveColor = Color3.Red();
         else
-            this.#sphere.material.emissiveColor = Color3.Black();
+            this.#elevator.material.emissiveColor = Color3.Black();
 
     }
 }

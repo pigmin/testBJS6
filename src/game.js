@@ -46,7 +46,7 @@ class Game {
 
         const hk = new HavokPlugin(true, this.#havokInstance);
         // enable physics in the scene with a gravity
-        scene.enablePhysics(new Vector3(0, -9.8, 0), hk);        
+        scene.enablePhysics(new Vector3(0, -9.81, 0), hk);        
         
         this.#gameCamera = new FollowCamera("camera1", new Vector3(0, 0, 0), scene);
         this.#gameCamera.heightOffset = 4;
@@ -60,7 +60,7 @@ class Game {
         const light = new HemisphericLight("light", new Vector3(0, 1, 0), scene);
         light.intensity = 0.7;
 
-        const sLight = new SpotLight("spot1", new Vector3(0, 20, 20), new Vector3(0, -1, -1), 1.2, 24, scene);
+        const sLight = new SpotLight("spot1", new Vector3(0, 20, 20), new Vector3(0, -1, -1), 2, 24, scene);
         this.#shadowGenerator = new ShadowGenerator(1024, sLight);
         this.#shadowGenerator.useBlurExponentialShadowMap = true;
 
@@ -117,6 +117,8 @@ class Game {
 
         let boxDebug = MeshBuilder.CreateBox("boxDebug", {size : 2});
         boxDebug.position = new Vector3(10, 15, 5);
+        this.#shadowGenerator.addShadowCaster(boxDebug);
+
         // Create a sphere shape and the associated body. Size will be determined automatically.
         const boxAggregate = new PhysicsAggregate(boxDebug, PhysicsShapeType.BOX, { mass: 1, restitution: 0.5 }, scene);
 
